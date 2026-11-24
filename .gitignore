@@ -6,5 +6,6 @@ dist*/
 cloudflared.exe
 LINK_PUBLIC.txt
 .env
+settings.private.json
 ChromeProfile/
 TikTokPriceData/

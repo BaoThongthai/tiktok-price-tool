@@ -13,6 +13,11 @@ try:
         except urllib.error.HTTPError as e:assert e.code==code
     assert request('',{'Authorization':auth}).status==200
     assert request('state',{'Authorization':auth}).status==200
+    pages={'Authorization':auth,'Origin':'https://baothongthai.github.io'}
+    assert request('state',pages).headers.get('Access-Control-Allow-Origin')=='https://baothongthai.github.io'
+    pre=urllib.request.Request(base+'run',headers={'Origin':'https://baothongthai.github.io','Access-Control-Request-Method':'POST'},method='OPTIONS')
+    assert urllib.request.urlopen(pre).status==204
+    assert request('stop',pages,b'{}').status==200
     try:request('stop',{'Authorization':auth,'Origin':'https://evil.example'},b'{}');raise AssertionError('must reject origin')
     except urllib.error.HTTPError as e:assert e.code==403
     assert request('stop',{'Authorization':auth,'Origin':f'https://127.0.0.1:{srv.server_port}'},b'{}').status==200
