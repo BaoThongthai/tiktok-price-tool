@@ -20,9 +20,11 @@ try:
     post('run',{'links':'https://shop.tiktok.com/vn/pdp/1738431839095981283'})
     job=json.loads(get('bridge-job'))['job'];assert job and len(job['links'])==1
     assert json.loads(get('bridge-job'))['job'] is None
-    rows=[{'shop':'TEST','name':'Mì '+str(i),'before':None if i==0 else 200000,'after':100000} for i in range(9)]
+    rows=[{'shop':'TEST','name':'Mì '+str(i),'before':None if i==0 else 200000,'after':100000,'url':'https://shop.tiktok.com/vn/pdp/'+str(1738431839095981283+i)} for i in range(9)]
     post('bridge-result',{'run_id':job['run_id'],'rows':rows,'done':True})
     assert len(json.loads(get('state'))['rows'])==9
+    assert json.loads(get('state'))['rows'][0]['url']==rows[0]['url']
+    assert rows[0]['url'] in get('csv').decode('utf-8-sig')
     assert get('csv').decode('utf-8-sig').count('TEST')==9
     post('run',{'links':'https://shop.tiktok.com/vn/pdp/1738431839095981283'})
     post('stop',{})
