@@ -21,6 +21,6 @@ assert.equal(fixture('100.000',null,'/vn/pdp/1738431839094998243').scanDetail(ur
  vm.createContext(c);vm.runInContext(fs.readFileSync(__dirname+'/background.js','utf8'),c);
  await c.run('http://127.0.0.1/','R'===null?null:{run_id:'R',links:['https://shop.tiktok.com/vn/pdp/source']},1);
  assert.equal(opened.length,10,JSON.stringify(emitted));
- const actual=emitted.flatMap(x=>x.rows||[]);assert.equal(actual.length,9);assert(actual.every(r=>r.after===123000&&r.name==='DETAIL'));
+ const actual=emitted.flatMap(x=>x.rows||[]);assert.equal(actual.length,9);assert(actual.every(r=>r.after===123000&&r.name==='DETAIL'));assert.deepEqual(actual.map(r=>r.url),rows.map(r=>r.url));
  console.log('PASS: detail prices, missing original price, range rejection, stale-page guard, nine sequential detail visits');
 })().catch(e=>{console.error(e);process.exitCode=1});
