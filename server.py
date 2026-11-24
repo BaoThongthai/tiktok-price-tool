@@ -70,8 +70,8 @@ class Handler(BaseHTTPRequestHandler):
             return self.json(payload)
         if route=='csv':
             with lock:rows=list(state['rows'])
-            buf=io.StringIO();w=csv.writer(buf);w.writerow(['Shop','Tên sản phẩm','Giá trước giảm','Giá sau giảm'])
-            for r in rows:w.writerow([r['shop'],r['name'],r['before'] if r['before'] is not None else 'Không hiển thị',r['after']])
+            buf=io.StringIO();w=csv.writer(buf);w.writerow(['Link sản phẩm','Shop','Tên sản phẩm','Giá trước giảm','Giá sau giảm'])
+            for r in rows:w.writerow([r.get('url',''),r['shop'],r['name'],r['before'] if r['before'] is not None else 'Không hiển thị',r['after']])
             self.send_response(200);self.send_header('Content-Type','text/csv; charset=utf-8');self.send_header('Content-Disposition','attachment; filename="Gia_TikTok_'+time.strftime('%Y%m%d_%H%M%S')+'.csv"');self.end_headers();self.wfile.write(('\ufeff'+buf.getvalue()).encode());return
         if route=='':return self.reply(HTML,'text/html; charset=utf-8')
         return self.reply('Not found',code=404)
@@ -106,7 +106,7 @@ class Handler(BaseHTTPRequestHandler):
                 if body.get('rows'):
                     rows=body['rows']
                     if not isinstance(rows,list) or any(not isinstance(r,dict) or not isinstance(r.get('name'),str) or not isinstance(r.get('shop'),str) or not isinstance(r.get('after'),(int,float)) or (r.get('before') is not None and not isinstance(r['before'],(int,float))) for r in rows):return self.reply('Invalid rows',code=400)
-                    state['rows'].extend({k:r[k] for k in ('shop','name','before','after')} for r in rows)
+                    state['rows'].extend(dict({k:r[k] for k in ('shop','name','before','after')},url=r.get('url','') if isinstance(r.get('url',''),str) and urlparse(r.get('url','')).scheme=='https' and urlparse(r.get('url','')).hostname in ('shop.tiktok.com','www.tiktok.com','vt.tiktok.com','vm.tiktok.com') and not urlparse(r.get('url','')).username and not urlparse(r.get('url','')).password else '') for r in rows)
                 if body.get('done'):state['busy']=False
                 return self.json({'ok':True})
         self.reply('Not found',code=404)
