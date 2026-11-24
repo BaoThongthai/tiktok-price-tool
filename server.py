@@ -1,4 +1,4 @@
-import csv,io,json,secrets,sys,threading,time,webbrowser
+import csv,io,json,secrets,sys,threading,time,webbrowser,base64,urllib.request,urllib.error
 from http.server import BaseHTTPRequestHandler,ThreadingHTTPServer
 from urllib.parse import urlparse
 from pathlib import Path
@@ -8,6 +8,43 @@ lock=threading.Lock()
 state={'busy':False,'rows':[],'logs':[],'connected':0,'run_id':None}
 pending=None
 HTML=Path(__file__).with_name('ui.html').read_text(encoding='utf-8')
+def shop_document(value=None,sha=None):
+    root=Path(sys.executable).parent if getattr(sys,'frozen',False) else Path(__file__).resolve().parent
+    config_path=root/'settings.private.json'
+    config=json.loads(config_path.read_text(encoding='utf-8')) if config_path.exists() else {}
+    token=config.get('github_token','')
+    headers={'Accept':'application/vnd.github+json','User-Agent':'TikTokPriceTool'}
+    if token:headers['Authorization']='Bearer '+token
+    endpoint='https://api.github.com/repos/BaoThongthai/tiktok-price-tool/contents/shops.json'
+    data=None
+    if value is not None:
+        if not token:raise RuntimeError('Máy treo chưa có GitHub token để lưu shop.')
+        payload={'message':'Update shared shop list','content':base64.b64encode(json.dumps(value,ensure_ascii=False,indent=2).encode()).decode(),'branch':'main'}
+        if sha:payload['sha']=sha
+        data=json.dumps(payload).encode();headers['Content-Type']='application/json'
+    request=urllib.request.Request(endpoint,data=data,headers=headers,method='PUT' if data else 'GET')
+    try:
+        with urllib.request.urlopen(request,timeout=30) as response:result=json.load(response)
+    except urllib.error.HTTPError as e:
+        if e.code==404 and value is None:return [],None
+        if e.code==409:raise FileExistsError('Danh sách vừa được cập nhật trên thiết bị khác.')
+        raise RuntimeError('Không cập nhật được GitHub (HTTP '+str(e.code)+'). Kiểm tra token trên máy treo.') from None
+    if value is not None:return value,result.get('content',{}).get('sha')
+    shops=json.loads(base64.b64decode(result['content']).decode('utf-8'))
+    if not isinstance(shops,list):raise RuntimeError('shops.json trên GitHub không đúng cấu trúc.')
+    return shops,result['sha']
+def add_shop(name,url):
+    if not isinstance(name,str) or not isinstance(url,str):raise ValueError('Nhập tên shop và link TikTok.')
+    name=name.strip();url=url.strip();parsed=urlparse(url)
+    if not name or len(name)>120:raise ValueError('Tên shop cần có từ 1 đến 120 ký tự.')
+    if parsed.scheme!='https' or parsed.hostname not in ('shop.tiktok.com','www.tiktok.com','vt.tiktok.com','vm.tiktok.com') or parsed.username or parsed.password:raise ValueError('Nhập link HTTPS TikTok hợp lệ.')
+    for attempt in range(3):
+        shops,sha=shop_document()
+        if any(s.get('url')==url for s in shops):raise ValueError('Link này đã có trong danh sách shop.')
+        new=shops+[{'id':secrets.token_hex(8),'name':name,'url':url}]
+        try:return shop_document(new,sha)[0]
+        except FileExistsError:
+            if attempt==2:raise RuntimeError('Danh sách đang được cập nhật. Hãy bấm lưu lại.')
 class Handler(BaseHTTPRequestHandler):
     def log_message(self,*args):pass
     def reply(self,data='',kind='text/plain; charset=utf-8',code=200):
@@ -21,6 +58,9 @@ class Handler(BaseHTTPRequestHandler):
         if route=='state':
             with lock:payload=dict(state,connected=time.time()-state['connected']<8)
             return self.json(payload)
+        if route=='shops':
+            try:return self.json({'shops':shop_document()[0]})
+            except Exception as e:return self.reply(str(e),code=502)
         if route=='bridge-job':
             with lock:
                 state['connected']=time.time();job=pending;pending=None
@@ -46,6 +86,10 @@ class Handler(BaseHTTPRequestHandler):
             if length>2000000:raise ValueError()
             body=json.loads(self.rfile.read(length) or b'{}')
         except Exception:return self.reply('Dữ liệu không hợp lệ',code=400)
+        if route=='shops':
+            try:return self.json({'shops':add_shop(body.get('name'),body.get('url'))})
+            except ValueError as e:return self.reply(str(e),code=400)
+            except Exception as e:return self.reply(str(e),code=502)
         with lock:
             if route=='stop':
                 pending=None;state['busy']=False;state['run_id']=None;state['logs'].append('Đã dừng.');return self.json({'ok':True})

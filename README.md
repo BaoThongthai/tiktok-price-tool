@@ -40,3 +40,7 @@ Chạy nguồn cần Python 3.12 và Chrome: `python server.py` hoặc `python p
 Không sao chép cookie, mật khẩu hoặc thư mục profile Chrome. Mật khẩu public chỉ giữ dạng mã băm trong bộ nhớ của phiên, không lưu trong mã nguồn. Dữ liệu đi qua Cloudflare khi dùng chế độ public; người có link và mật khẩu có thể xem kết quả và gửi tác vụ lấy giá. Không chia sẻ mật khẩu hoặc `LINK_PUBLIC.txt` công khai.
 
 Ngày 24/11/2026 đã xác minh bộ chọn giá trên đủ 9 trang chi tiết của link mẫu; đã kiểm tra luồng hàng đợi, CSV, lấy giá chi tiết, từ chối khoảng giá và trang cũ. Chế độ public cần chạy thực tế trên máy treo để xác minh kết nối từ Internet. GitHub chứa mã nguồn và gói tải; việc đưa repository lên GitHub không tự biến máy treo thành dịch vụ online.
+
+## Thêm shop và danh sách dùng chung
+
+Sau khi đăng nhập, bấm **Thêm shop**, nhập tên và link TikTok, bấm **Lưu lên GitHub**. Danh sách được ghi trực tiếp vào `shops.json` của repository, dùng chung cho mọi thiết bị. Chọn các shop rồi bấm **Lấy giá các shop đã chọn**. Máy treo phải chạy bản server mới để nhận lệnh lưu GitHub. Token chỉ nằm trên máy treo, không chuyển đến trình duyệt của người truy cập. Tên shop và link trong danh sách là dữ liệu public trên repository theo thiết lập của dự án.

@@ -1,4 +1,5 @@
 let base='',authorization='',timer=null;
+let shops=[];
 const el=id=>document.getElementById(id);
 async function connection(){
  const r=await fetch('https://raw.githubusercontent.com/BaoThongthai/tiktok-price-tool/main/connection.json?t='+Date.now(),{cache:'no-store'});
@@ -31,7 +32,7 @@ el('login-form').onsubmit=async e=>{
  try{
   await connection();const raw=new TextEncoder().encode(el('username').value+':'+el('password').value);
   authorization='Basic '+btoa(String.fromCharCode(...raw));
-  await refresh();el('password').value='';el('login').hidden=true;el('app').hidden=false;clearTimeout(timer);poll();
+  await refresh();el('password').value='';el('login').hidden=true;el('app').hidden=false;clearTimeout(timer);poll();loadShops();
  }catch(e){authorization='';el('login-status').textContent=e.message;}
  finally{el('signin').disabled=false;}
 };
@@ -39,3 +40,35 @@ el('logout').onclick=()=>{authorization='';clearTimeout(timer);el('app').hidden=
 for(const id of ['run','stop'])el(id).onclick=async()=>{try{await api(id,{links:el('links').value});await refresh();}catch(e){el('status').textContent=e.message;}};
 el('file').onchange=async e=>{if(e.target.files[0])el('links').value=await e.target.files[0].text();};
 el('csv').onclick=async()=>{try{const blob=await(await api('csv')).blob();const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='Gia_TikTok_'+new Date().toISOString().slice(0,10)+'.csv';a.click();setTimeout(()=>URL.revokeObjectURL(url),10000);}catch(e){el('status').textContent=e.message;}};
+function renderShops(){
+ const selected=new Set([...el('shop-list').querySelectorAll('input:checked')].map(e=>e.value));
+ el('shop-list').replaceChildren();
+ for(const shop of shops){
+  const row=document.createElement('label');row.className='shop-row';
+  const check=document.createElement('input');check.type='checkbox';check.value=shop.id;check.checked=selected.size?selected.has(shop.id):true;
+  const text=document.createElement('span');text.textContent=shop.name;
+  const small=document.createElement('small');small.textContent=shop.url;text.append(document.createElement('br'),small);row.append(check,text);el('shop-list').append(row);
+ }
+ if(!shops.length)el('shop-list').textContent='Chưa có shop. Bấm Thêm shop để tạo.';
+}
+async function loadShops(){
+ try{const data=await(await api('shops')).json();shops=data.shops;renderShops();el('shop-message').textContent=shops.length+' shop · lưu chung trên GitHub';}
+ catch(e){el('shop-message').textContent=e.message.includes('Not found')?'Cần cập nhật TikTokPriceServer.exe trên máy treo để dùng danh sách shop.':e.message;}
+}
+el('add-shop').onclick=()=>{el('shop-form').reset();el('shop-error').textContent='';el('shop-dialog').showModal();el('shop-name').focus();};
+el('cancel-shop').onclick=()=>el('shop-dialog').close();
+el('reload-shops').onclick=loadShops;
+el('shop-form').onsubmit=async e=>{
+ e.preventDefault();el('save-shop').disabled=true;el('shop-error').textContent='Đang lưu lên GitHub…';
+ try{
+  const data=await(await api('shops',{name:el('shop-name').value.trim(),url:el('shop-url').value.trim()})).json();
+  shops=data.shops;renderShops();el('shop-dialog').close();el('shop-message').textContent='Đã lưu shop lên GitHub · '+shops.length+' shop';
+ }catch(e){el('shop-error').textContent=e.message;}
+ finally{el('save-shop').disabled=false;}
+};
+el('run-shops').onclick=()=>{
+ const selected=new Set([...el('shop-list').querySelectorAll('input:checked')].map(e=>e.value));
+ const links=shops.filter(s=>selected.has(s.id)).map(s=>s.url);
+ if(!links.length){el('shop-message').textContent='Chọn ít nhất một shop để lấy giá.';return;}
+ el('links').value=links.join('\n');el('run').click();
+};
