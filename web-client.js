@@ -24,7 +24,7 @@ async function refresh(){
  const s=await(await api('state')).json();
  el('status').textContent=(s.connected?'Chrome: Đã kết nối':'Chrome: Chưa kết nối — mở tab nội bộ trên máy treo')+' • '+(s.busy?'Đang chạy':'Sẵn sàng')+' • '+s.rows.length+' sản phẩm';
  el('run').disabled=s.busy;el('logs').textContent=s.logs.join('\n');el('rows').replaceChildren();
- for(const r of s.rows){const tr=document.createElement('tr');for(const v of [r.shop,r.name,money(r.before),money(r.after)]){const td=document.createElement('td');td.textContent=v;tr.append(td);}el('rows').append(tr);}
+ for(const r of s.rows){const tr=document.createElement('tr');for(const v of [r.shop,r.name,money(r.before),money(r.after)]){const td=document.createElement('td');td.textContent=v;tr.append(td);}const linkCell=document.createElement('td');try{const url=new URL(r.url);if(url.protocol==='https:'&&!url.username&&!url.password&&['shop.tiktok.com','www.tiktok.com','vt.tiktok.com','vm.tiktok.com'].includes(url.hostname)){const a=document.createElement('a');a.href=url.href;a.target='_blank';a.rel='noopener noreferrer';a.textContent='Mở sản phẩm';linkCell.append(a);}}catch{}tr.append(linkCell);el('rows').append(tr);}
 }
 async function poll(){try{await refresh();}catch(e){el('status').textContent=e.message;}timer=setTimeout(poll,1500);}
 el('login-form').onsubmit=async e=>{
