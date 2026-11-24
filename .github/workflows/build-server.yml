@@ -1,0 +1,57 @@
+name: Build Windows server
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - '.github/workflows/build-server.yml'
+permissions:
+  contents: write
+concurrency:
+  group: build-windows-server
+  cancel-in-progress: false
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Verify price and link handling
+        run: |
+          python test_backend.py
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python test_public.py
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python test_shops.py
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          node test_detail.js
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Build server
+        run: |
+          python -m pip install pyinstaller==6.22.3
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python -m PyInstaller --noconfirm --onefile --console --name TikTokPriceServer --add-data "ui.html;." public_server.py
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Package server and extension
+        shell: python
+        run: |
+          from pathlib import Path
+          import zipfile
+          with zipfile.ZipFile('TikTokPriceTool_Server.zip','w',zipfile.ZIP_DEFLATED) as z:
+              z.write('dist/TikTokPriceServer.exe','TikTokPriceServer.exe')
+              for name in ['manifest.json','background.js','connect.js','scanner.js']:
+                  z.write(name,'extension/'+name)
+              for name in ['server.py','public_server.py','ui.html','README.md']:
+                  z.write(name,name)
+      - name: Publish updated download
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -- TikTokPriceTool_Server.zip
+          git diff --cached --quiet
+          if ($LASTEXITCODE -eq 0) { exit 0 }
+          git commit -m "Build Windows server with product links"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          git push
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
