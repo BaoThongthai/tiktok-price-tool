@@ -61,7 +61,7 @@ async function run(base,job,windowId){
             await report(base,job.run_id,{log:`[SP ${j+1}/${result.rows.length}] Đọc trang chi tiết: ${product.name}`});
             await chrome.tabs.update(tabId,{url:product.url,active:true});
             const detail=await readStable(base,job.run_id,tabId,scanDetail,[product.url]);
-            await report(base,job.run_id,{rows:[{...detail,shop}],log:`Đã lấy giá trong trang: ${detail.after.toLocaleString('vi-VN')}đ`});
+            await report(base,job.run_id,{rows:[{...detail,shop,url:product.url}],log:`Đã lấy giá trong trang: ${detail.after.toLocaleString('vi-VN')}đ`});
           }catch(e){
             if(!await active(base,job.run_id))return;
             await report(base,job.run_id,{log:`LỖI SP ${product.url}: ${e.message}. Không dùng giá ở thẻ bên ngoài.`});
